@@ -7,9 +7,13 @@ import org.lsposed.hiddenapibypass.HiddenApiBypass
 import java.lang.IllegalStateException
 
 class SIM1VoLTEConfigToggleQSTileService : VoLTEConfigToggleQSTileService(0)
+
 class SIM2VoLTEConfigToggleQSTileService : VoLTEConfigToggleQSTileService(1)
 
-open class VoLTEConfigToggleQSTileService(private val simSlotIndex: Int) : TileService() {
+open class VoLTEConfigToggleQSTileService(
+    private val simSlotIndex: Int,
+) : TileService() {
+    @Suppress("ktlint:standard:property-naming")
     private val TAG = "SIM${simSlotIndex}VoLTEConfigToggleQSTileService"
 
     init {
@@ -23,11 +27,13 @@ open class VoLTEConfigToggleQSTileService(private val simSlotIndex: Int) : TileS
         try {
             if (checkShizukuPermission(0) == ShizukuStatus.GRANTED && carrierModer.deviceSupportsIMS) {
                 carrierModer.subscriptions
-                val sub = carrierModer.getActiveSubscriptionInfoForSimSlotIndex(this.simSlotIndex)
-                    ?: return null
-                return SubscriptionModer(sub.subscriptionId)
+                val sub =
+                    carrierModer.getActiveSubscriptionInfoForSimSlotIndex(this.simSlotIndex)
+                        ?: return null
+                return SubscriptionModer(this.applicationContext, sub.subscriptionId)
             }
-        } catch (_: IllegalStateException) {}
+        } catch (_: IllegalStateException) {
+        }
         return null
     }
 
@@ -40,7 +46,8 @@ open class VoLTEConfigToggleQSTileService(private val simSlotIndex: Int) : TileS
         val moder = this.moder ?: return null
         try {
             return moder.isVoLteConfigEnabled
-        } catch (_: IllegalStateException) {}
+        } catch (_: IllegalStateException) {
+        }
         return null
     }
 
@@ -53,18 +60,20 @@ open class VoLTEConfigToggleQSTileService(private val simSlotIndex: Int) : TileS
 
     override fun onStartListening() {
         super.onStartListening()
-        qsTile.state = when (this.volteEnabled) {
-            true -> Tile.STATE_ACTIVE
-            false -> Tile.STATE_INACTIVE
-            null -> Tile.STATE_UNAVAILABLE
-        }
-        qsTile.subtitle = getString(
+        qsTile.state =
             when (this.volteEnabled) {
-                true -> R.string.enabled
-                false -> R.string.disabled
-                null -> R.string.unknown
-            },
-        )
+                true -> Tile.STATE_ACTIVE
+                false -> Tile.STATE_INACTIVE
+                null -> Tile.STATE_UNAVAILABLE
+            }
+        qsTile.subtitle =
+            getString(
+                when (this.volteEnabled) {
+                    true -> R.string.enabled
+                    false -> R.string.disabled
+                    null -> R.string.unknown
+                },
+            )
         qsTile.updateTile()
     }
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.core.content.ContextCompat.startActivity
+import androidx.core.net.toUri
 import androidx.navigation.NavController
 import dev.bluehouse.enablevolte.BuildConfig
 import dev.bluehouse.enablevolte.CarrierModer
@@ -38,6 +39,7 @@ import rikka.shizuku.Shizuku
 
 const val TAG = "HomeActivity:Home"
 
+@Suppress("ktlint:standard:function-naming")
 @Composable
 fun Home(navController: NavController) {
     val carrierModer = CarrierModer(LocalContext.current)
@@ -58,7 +60,7 @@ fun Home(navController: NavController) {
         deviceIMSEnabled = carrierModer.deviceSupportsIMS
 
         if (subscriptions.isNotEmpty() && deviceIMSEnabled) {
-            isIMSRegistered = subscriptions.map { SubscriptionModer(it.subscriptionId).isIMSRegistered }
+            isIMSRegistered = subscriptions.map { SubscriptionModer(context, it.subscriptionId).isIMSRegistered }
         }
     }
 
@@ -97,11 +99,14 @@ fun Home(navController: NavController) {
     Column(modifier = Modifier.padding(Dp(16f)).verticalScroll(scrollState)) {
         HeaderText(text = stringResource(R.string.version))
         if (newerVersion.isNotEmpty()) {
-            ClickablePropertyView(label = BuildConfig.VERSION_NAME, value = stringResource(R.string.newer_version_available, newerVersion)) {
+            ClickablePropertyView(
+                label = BuildConfig.VERSION_NAME,
+                value = stringResource(R.string.newer_version_available, newerVersion),
+            ) {
                 val url = "https://github.com/kyujin-cho/pixel-volte-patch/releases/tag/$newerVersion"
                 val i = Intent(Intent.ACTION_VIEW)
-                i.data = Uri.parse(url)
-                startActivity(context, i, null)
+                i.data = url.toUri()
+                context.startActivity(i, null)
             }
         } else {
             StringPropertyView(label = BuildConfig.VERSION_NAME, value = stringResource(R.string.running_latest_version))

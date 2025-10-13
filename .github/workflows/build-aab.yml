@@ -36,10 +36,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       - name: Install required platform
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+        run: sdkmanager "platforms;android-36" "build-tools;35.0.0"
       - name: Replace android.jar
         run: |
-          curl -L https://github.com/Reginer/aosp-android-jar/raw/main/android-34/android.jar > /usr/local/lib/android/sdk/platforms/android-34/android.jar
+          curl -L https://github.com/Reginer/aosp-android-jar/raw/main/android-36/android.jar > /usr/local/lib/android/sdk/platforms/android-36/android.jar
       - name: Build App Bundle
         id: build_aab
         run: |

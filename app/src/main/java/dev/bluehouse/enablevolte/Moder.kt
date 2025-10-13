@@ -1,11 +1,14 @@
 package dev.bluehouse.enablevolte
 
+import android.app.IActivityManager
+import android.app.UiAutomationConnection
+import android.content.ComponentName
 import android.content.Context
 import android.content.res.Resources
 import android.os.Build
 import android.os.Build.VERSION_CODES
+import android.os.Bundle
 import android.os.IInterface
-import android.os.PersistableBundle
 import android.telephony.CarrierConfigManager
 import android.telephony.SubscriptionInfo
 import android.telephony.TelephonyFrameworkInitializer
@@ -16,17 +19,20 @@ import com.android.internal.telephony.IPhoneSubInfo
 import com.android.internal.telephony.ISub
 import com.android.internal.telephony.ITelephony
 import rikka.shizuku.ShizukuBinderWrapper
-
-private const val TAG = "CarrierModer"
+import rikka.shizuku.SystemServiceHelper
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 object InterfaceCache {
     val cache = HashMap<String, IInterface>()
 }
 
 open class Moder {
+    @Suppress("ktlint:standard:property-naming")
     val KEY_IMS_USER_AGENT = "ims.ims_user_agent_string"
 
-    protected inline fun <reified T : IInterface>loadCachedInterface(interfaceLoader: () -> T): T {
+    protected inline fun <reified T : IInterface> loadCachedInterface(interfaceLoader: () -> T): T {
         InterfaceCache.cache[T::class.java.name]?.let {
             return it as T
         } ?: run {
@@ -37,47 +43,53 @@ open class Moder {
     }
 
     protected val carrierConfigLoader: ICarrierConfigLoader
-        get() = ICarrierConfigLoader.Stub.asInterface(
-            ShizukuBinderWrapper(
-                TelephonyFrameworkInitializer
-                    .getTelephonyServiceManager()
-                    .carrierConfigServiceRegisterer
-                    .get(),
-            ),
-        )
+        get() =
+            ICarrierConfigLoader.Stub.asInterface(
+                ShizukuBinderWrapper(
+                    TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .carrierConfigServiceRegisterer
+                        .get()!!,
+                ),
+            )
 
     protected val telephony: ITelephony
-        get() = ITelephony.Stub.asInterface(
-            ShizukuBinderWrapper(
-                TelephonyFrameworkInitializer
-                    .getTelephonyServiceManager()
-                    .telephonyServiceRegisterer
-                    .get(),
-            ),
-        )
+        get() =
+            ITelephony.Stub.asInterface(
+                ShizukuBinderWrapper(
+                    TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .telephonyServiceRegisterer
+                        .get()!!,
+                ),
+            )
 
     protected val phoneSubInfo: IPhoneSubInfo
-        get() = IPhoneSubInfo.Stub.asInterface(
-            ShizukuBinderWrapper(
-                TelephonyFrameworkInitializer
-                    .getTelephonyServiceManager()
-                    .phoneSubServiceRegisterer
-                    .get(),
-            ),
-        )
+        get() =
+            IPhoneSubInfo.Stub.asInterface(
+                ShizukuBinderWrapper(
+                    TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .phoneSubServiceRegisterer
+                        .get()!!,
+                ),
+            )
 
     protected val sub: ISub
-        get() = ISub.Stub.asInterface(
-            ShizukuBinderWrapper(
-                TelephonyFrameworkInitializer
-                    .getTelephonyServiceManager()
-                    .subscriptionServiceRegisterer
-                    .get(),
-            ),
-        )
+        get() =
+            ISub.Stub.asInterface(
+                ShizukuBinderWrapper(
+                    TelephonyFrameworkInitializer
+                        .getTelephonyServiceManager()
+                        .subscriptionServiceRegisterer
+                        .get()!!,
+                ),
+            )
 }
 
-class CarrierModer(private val context: Context) : Moder() {
+class CarrierModer(
+    private val context: Context,
+) : Moder() {
     fun getActiveSubscriptionInfoForSimSlotIndex(index: Int): SubscriptionInfo? {
         val sub = this.loadCachedInterface { sub }
         return sub.getActiveSubscriptionInfoForSimSlotIndex(index, null, null)
@@ -87,15 +99,16 @@ class CarrierModer(private val context: Context) : Moder() {
         get() {
             val sub = this.loadCachedInterface { sub }
             return try {
-                sub.getActiveSubscriptionInfoList(null, null)
+                sub.getActiveSubscriptionInfoList(null, null, true)
             } catch (e: NoSuchMethodError) {
                 // FIXME: lift up reflect as soon as official source code releases
-                val getActiveSubscriptionInfoListMethod = sub.javaClass.getMethod(
-                    "getActiveSubscriptionInfoList",
-                    String::class.java,
-                    String::class.java,
-                    Boolean::class.java,
-                )
+                val getActiveSubscriptionInfoListMethod =
+                    sub.javaClass.getMethod(
+                        "getActiveSubscriptionInfoList",
+                        String::class.java,
+                        String::class.java,
+                        Boolean::class.java,
+                    )
                 (getActiveSubscriptionInfoListMethod.invoke(sub, null, null, false) as List<SubscriptionInfo>)
             }
         }
@@ -114,55 +127,139 @@ class CarrierModer(private val context: Context) : Moder() {
         }
 }
 
-class SubscriptionModer(val subscriptionId: Int) : Moder() {
-    private fun publishBundle(fn: (PersistableBundle) -> Unit) {
+class SubscriptionModer(
+    private val context: Context,
+    val subscriptionId: Int,
+) : Moder() {
+    @Suppress("ktlint:standard:property-naming")
+    private val TAG = "CarrierModer"
+
+    private fun overrideConfigDirectly(bundle: Bundle?) {
         val iCclInstance = this.loadCachedInterface { carrierConfigLoader }
-        val overrideBundle = PersistableBundle()
-        fn(overrideBundle)
-        iCclInstance.overrideConfig(this.subscriptionId, overrideBundle, true)
+        if (bundle != null) {
+            val args = toPersistableBundle(bundle)
+            iCclInstance.overrideConfig(subscriptionId, args, true)
+        } else {
+            iCclInstance.overrideConfig(subscriptionId, null, true)
+        }
     }
-    fun updateCarrierConfig(key: String, value: Boolean) {
+
+    private fun overrideConfigUsingBroker(bundle: Bundle?) {
+        val am =
+            IActivityManager.Stub.asInterface(
+                ShizukuBinderWrapper(
+                    SystemServiceHelper.getSystemService(Context.ACTIVITY_SERVICE),
+                ),
+            )
+
+        val arg =
+            bundle ?: run {
+                val empty = Bundle()
+                empty.putBoolean("moder_clear", true)
+                empty
+            }
+        arg.putInt("moder_subId", subscriptionId)
+
+        am.startInstrumentation(
+            ComponentName(context, Class.forName("dev.bluehouse.enablevolte.BrokerInstrumentation")),
+            null,
+            8,
+            arg,
+            null,
+            UiAutomationConnection(),
+            0,
+            null,
+        )
+    }
+
+    private fun overrideConfig(bundle: Bundle?) {
+        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val cal = Calendar.getInstance()
+        val securityPatchDate = sdf.parse(Build.VERSION.SECURITY_PATCH)
+        if (securityPatchDate == null) {
+            this.overrideConfigDirectly(bundle)
+        } else {
+            cal.time = securityPatchDate
+            if (cal.get(Calendar.YEAR) > 2025 || (cal.get(Calendar.YEAR) == 2025 && cal.get(Calendar.MONTH) >= 9)) {
+                this.overrideConfigUsingBroker(bundle)
+            } else {
+                this.overrideConfigDirectly(bundle)
+            }
+        }
+    }
+
+    private fun publishBundle(fn: (Bundle) -> Unit) {
+        val overrideBundle = Bundle()
+        fn(overrideBundle)
+        this.overrideConfig(overrideBundle)
+    }
+
+    fun updateCarrierConfig(
+        key: String,
+        value: Boolean,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putBoolean(key, value) }
     }
 
-    fun updateCarrierConfig(key: String, value: String) {
+    fun updateCarrierConfig(
+        key: String,
+        value: String,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putString(key, value) }
     }
 
-    fun updateCarrierConfig(key: String, value: Int) {
+    fun updateCarrierConfig(
+        key: String,
+        value: Int,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putInt(key, value) }
     }
-    fun updateCarrierConfig(key: String, value: Long) {
+
+    fun updateCarrierConfig(
+        key: String,
+        value: Long,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putLong(key, value) }
     }
 
-    fun updateCarrierConfig(key: String, value: IntArray) {
+    fun updateCarrierConfig(
+        key: String,
+        value: IntArray,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putIntArray(key, value) }
     }
 
-    fun updateCarrierConfig(key: String, value: BooleanArray) {
+    fun updateCarrierConfig(
+        key: String,
+        value: BooleanArray,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putBooleanArray(key, value) }
     }
 
-    fun updateCarrierConfig(key: String, value: Array<String>) {
+    fun updateCarrierConfig(
+        key: String,
+        value: Array<String>,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putStringArray(key, value) }
     }
 
-    fun updateCarrierConfig(key: String, value: LongArray) {
+    fun updateCarrierConfig(
+        key: String,
+        value: LongArray,
+    ) {
         Log.d(TAG, "Setting $key to $value")
         publishBundle { it.putLongArray(key, value) }
     }
 
     fun clearCarrierConfig() {
-        val iCclInstance = this.loadCachedInterface { carrierConfigLoader }
-        iCclInstance.overrideConfig(this.subscriptionId, null, true)
+        this.overrideConfig(null)
     }
 
     fun restartIMSRegistration() {
@@ -171,7 +268,7 @@ class SubscriptionModer(val subscriptionId: Int) : Moder() {
         telephony.resetIms(sub.getSlotIndex(this.subscriptionId))
     }
 
-    fun getStringValue(key: String): String {
+    fun getStringValue(key: String): String? {
         Log.d(TAG, "Resolving string value of key $key")
         val subscriptionId = this.subscriptionId
         if (subscriptionId < 0) {
@@ -228,7 +325,7 @@ class SubscriptionModer(val subscriptionId: Int) : Moder() {
         val iCclInstance = this.loadCachedInterface { carrierConfigLoader }
 
         val config = iCclInstance.getConfigForSubIdWithFeature(subscriptionId, iCclInstance.defaultCarrierServicePackageName, "")
-        return config.getBooleanArray(key)
+        return config.getBooleanArray(key) ?: BooleanArray(0)
     }
 
     fun getIntArrayValue(key: String): IntArray {
@@ -240,7 +337,7 @@ class SubscriptionModer(val subscriptionId: Int) : Moder() {
         val iCclInstance = this.loadCachedInterface { carrierConfigLoader }
 
         val config = iCclInstance.getConfigForSubIdWithFeature(subscriptionId, iCclInstance.defaultCarrierServicePackageName, "")
-        return config.getIntArray(key)
+        return config.getIntArray(key) ?: IntArray(0)
     }
 
     fun getStringArrayValue(key: String): Array<String> {
@@ -252,8 +349,9 @@ class SubscriptionModer(val subscriptionId: Int) : Moder() {
         val iCclInstance = this.loadCachedInterface { carrierConfigLoader }
 
         val config = iCclInstance.getConfigForSubIdWithFeature(subscriptionId, iCclInstance.defaultCarrierServicePackageName, "")
-        return config.getStringArray(key)
+        return config.getStringArray(key) ?: emptyArray()
     }
+
     fun getValue(key: String): Any? {
         Log.d(TAG, "Resolving value of key $key")
         val subscriptionId = this.subscriptionId
@@ -274,12 +372,13 @@ class SubscriptionModer(val subscriptionId: Int) : Moder() {
 
     val isVoNrConfigEnabled: Boolean
         @RequiresApi(VERSION_CODES.UPSIDE_DOWN_CAKE)
-        get() = this.getBooleanValue(CarrierConfigManager.KEY_VONR_ENABLED_BOOL) &&
-            this.getBooleanValue(CarrierConfigManager.KEY_VONR_SETTING_VISIBILITY_BOOL)
+        get() =
+            this.getBooleanValue(CarrierConfigManager.KEY_VONR_ENABLED_BOOL) &&
+                this.getBooleanValue(CarrierConfigManager.KEY_VONR_SETTING_VISIBILITY_BOOL)
 
     val isCrossSIMConfigEnabled: Boolean
         get() {
-            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            return if (Build.VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
                 this.getBooleanValue(CarrierConfigManager.KEY_CARRIER_CROSS_SIM_IMS_AVAILABLE_BOOL) &&
                     this.getBooleanValue(CarrierConfigManager.KEY_ENABLE_CROSS_SIM_CALLING_ON_OPPORTUNISTIC_DATA_BOOL)
             } else {
@@ -342,17 +441,20 @@ class SubscriptionModer(val subscriptionId: Int) : Moder() {
         get() = this.getBooleanValue(CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL)
 
     val is4GPlusEnabled: Boolean
-        get() = this.getBooleanValue(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL) &&
-            this.getBooleanValue(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL) &&
-            !this.getBooleanValue(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL)
+        get() =
+            this.getBooleanValue(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL) &&
+                this.getBooleanValue(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL) &&
+                !this.getBooleanValue(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL)
 
     val isNRConfigEnabled: Boolean
         @RequiresApi(Build.VERSION_CODES.S)
-        get() = this.getIntArrayValue(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY)
-            .contentEquals(intArrayOf(1, 2))
+        get() =
+            this
+                .getIntArrayValue(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY)
+                .contentEquals(intArrayOf(1, 2))
 
     val userAgentConfig: String
-        get() = this.getStringValue(KEY_IMS_USER_AGENT)
+        get() = this.getStringValue(KEY_IMS_USER_AGENT) ?: ""
 
     val isIMSRegistered: Boolean
         get() {
