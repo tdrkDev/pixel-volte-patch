@@ -80,7 +80,6 @@ fun Config(
     var loading by rememberSaveable { mutableStateOf(true) }
     val scope = rememberCoroutineScope()
     val simSlotIndex = moder.simSlotIndex
-    val statusBarManager: StatusBarManager = context.getSystemService(StatusBarManager::class.java)
 
     fun loadFlags() {
         Log.d(TAG, "loadFlags")
@@ -222,16 +221,27 @@ fun Config(
                         true
                     }
             }
-            BooleanPropertyView(label = stringResource(R.string.enable_ss_over_ut), toggled = ssOverUtEnabled) {
-                ssOverUtEnabled =
-                    if (ssOverUtEnabled) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL, true)
-                        moder.restartIMSRegistration()
-                        true
-                    }
+            if (VERSION.SDK_INT >= VERSION_CODES.Q) {
+                BooleanPropertyView(
+                    label = stringResource(R.string.enable_ss_over_ut),
+                    toggled = ssOverUtEnabled,
+                ) {
+                    ssOverUtEnabled =
+                        if (ssOverUtEnabled) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL,
+                                true,
+                            )
+                            moder.restartIMSRegistration()
+                            true
+                        }
+                }
             }
             BooleanPropertyView(label = stringResource(R.string.enable_ss_over_cdma), toggled = ssOverCDMAEnabled) {
                 ssOverCDMAEnabled =
@@ -255,19 +265,42 @@ fun Config(
                         true
                     }
             }
-            BooleanPropertyView(label = stringResource(R.string.enable_enhanced_4g_lte_plus), toggled = is4GPlusEnabled) {
-                is4GPlusEnabled =
-                    if (is4GPlusEnabled) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL, false)
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL, false)
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL, true)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL, true)
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL, true)
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL, false)
-                        true
-                    }
+            if (VERSION.SDK_INT >= VERSION_CODES.Q) {
+                BooleanPropertyView(
+                    label = stringResource(R.string.enable_enhanced_4g_lte_plus),
+                    toggled = is4GPlusEnabled,
+                ) {
+                    is4GPlusEnabled =
+                        if (is4GPlusEnabled) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL,
+                                false,
+                            )
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL,
+                                false,
+                            )
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL,
+                                true,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL,
+                                true,
+                            )
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL,
+                                true,
+                            )
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL,
+                                false,
+                            )
+                            true
+                        }
+                }
             }
             BooleanPropertyView(label = stringResource(R.string.allow_adding_apns), toggled = allowAddingAPNs) {
                 allowAddingAPNs =
@@ -287,35 +320,51 @@ fun Config(
             }
 
             HeaderText(text = stringResource(R.string.cosmetic_toggles))
-            BooleanPropertyView(
-                label = stringResource(R.string.show_vowifi_preference_in_settings),
-                toggled = showVoWifiMode,
-                minSdk = VERSION_CODES.R,
-            ) {
-                showVoWifiMode =
-                    if (showVoWifiMode) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL, true)
-                        moder.restartIMSRegistration()
-                        true
-                    }
+            if (VERSION.SDK_INT >= VERSION_CODES.R) {
+                BooleanPropertyView(
+                    label = stringResource(R.string.show_vowifi_preference_in_settings),
+                    toggled = showVoWifiMode,
+                    minSdk = VERSION_CODES.R,
+                ) {
+                    showVoWifiMode =
+                        if (showVoWifiMode) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_EDITABLE_WFC_MODE_BOOL,
+                                true,
+                            )
+                            moder.restartIMSRegistration()
+                            true
+                        }
+                }
             }
-            BooleanPropertyView(
-                label = stringResource(R.string.show_vowifi_roaming_preference_in_settings),
-                toggled = showVoWifiRoamingMode,
-                minSdk = VERSION_CODES.R,
-            ) {
-                showVoWifiRoamingMode =
-                    if (showVoWifiRoamingMode) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_EDITABLE_WFC_ROAMING_MODE_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_EDITABLE_WFC_ROAMING_MODE_BOOL, true)
-                        moder.restartIMSRegistration()
-                        true
-                    }
+            if (VERSION.SDK_INT >= VERSION_CODES.R) {
+                BooleanPropertyView(
+                    label = stringResource(R.string.show_vowifi_roaming_preference_in_settings),
+                    toggled = showVoWifiRoamingMode,
+                    minSdk = VERSION_CODES.R,
+                ) {
+                    showVoWifiRoamingMode =
+                        if (showVoWifiRoamingMode) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_EDITABLE_WFC_ROAMING_MODE_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_EDITABLE_WFC_ROAMING_MODE_BOOL,
+                                true,
+                            )
+                            moder.restartIMSRegistration()
+                            true
+                        }
+                }
             }
             RadioSelectPropertyView(
                 label = stringResource(R.string.wi_fi_calling_carrier_name_format),
@@ -361,64 +410,92 @@ fun Config(
                         true
                     }
             }
-            BooleanPropertyView(
-                label = stringResource(R.string.always_show_data_icon),
-                toggled = alwaysDataRATIcon,
-                minSdk = VERSION_CODES.R,
-            ) {
-                alwaysDataRATIcon =
-                    if (alwaysDataRATIcon) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_ALWAYS_SHOW_DATA_RAT_ICON_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_ALWAYS_SHOW_DATA_RAT_ICON_BOOL, true)
-                        true
-                    }
-            }
-            BooleanPropertyView(
-                label = stringResource(R.string.show_4g_for_lte_data_icon),
-                toggled = show4GForLteEnabled,
-                minSdk = VERSION_CODES.R,
-            ) {
-                show4GForLteEnabled =
-                    if (show4GForLteEnabled) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_SHOW_4G_FOR_LTE_DATA_ICON_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_SHOW_4G_FOR_LTE_DATA_ICON_BOOL, true)
-                        true
-                    }
-            }
-            BooleanPropertyView(
-                label = stringResource(R.string.hide_enhanced_data_icon),
-                toggled = hideEnhancedDataIconEnabled,
-                minSdk = VERSION_CODES.R,
-            ) {
-                hideEnhancedDataIconEnabled =
-                    if (hideEnhancedDataIconEnabled) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL, true)
-                        true
-                    }
-            }
-            BooleanPropertyView(
-                label = stringResource(R.string.show_ims_status_in_sim_status),
-                toggled = showIMSinSIMInfo,
-                minSdk = VERSION_CODES.R,
-            ) {
-                showIMSinSIMInfo =
-                    if (showIMSinSIMInfo) {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_SHOW_IMS_REGISTRATION_STATUS_BOOL, false)
-                        false
-                    } else {
-                        moder.updateCarrierConfig(CarrierConfigManager.KEY_SHOW_IMS_REGISTRATION_STATUS_BOOL, true)
-                        true
-                    }
+            if (VERSION.SDK_INT >= VERSION_CODES.R) {
+                BooleanPropertyView(
+                    label = stringResource(R.string.always_show_data_icon),
+                    toggled = alwaysDataRATIcon,
+                    minSdk = VERSION_CODES.R,
+                ) {
+                    alwaysDataRATIcon =
+                        if (alwaysDataRATIcon) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_ALWAYS_SHOW_DATA_RAT_ICON_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_ALWAYS_SHOW_DATA_RAT_ICON_BOOL,
+                                true,
+                            )
+                            true
+                        }
+                }
+                BooleanPropertyView(
+                    label = stringResource(R.string.show_4g_for_lte_data_icon),
+                    toggled = show4GForLteEnabled,
+                    minSdk = VERSION_CODES.R,
+                ) {
+                    show4GForLteEnabled =
+                        if (show4GForLteEnabled) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_SHOW_4G_FOR_LTE_DATA_ICON_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_SHOW_4G_FOR_LTE_DATA_ICON_BOOL,
+                                true,
+                            )
+                            true
+                        }
+                }
+                BooleanPropertyView(
+                    label = stringResource(R.string.hide_enhanced_data_icon),
+                    toggled = hideEnhancedDataIconEnabled,
+                    minSdk = VERSION_CODES.R,
+                ) {
+                    hideEnhancedDataIconEnabled =
+                        if (hideEnhancedDataIconEnabled) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_HIDE_LTE_PLUS_DATA_ICON_BOOL,
+                                true,
+                            )
+                            true
+                        }
+                }
+                BooleanPropertyView(
+                    label = stringResource(R.string.show_ims_status_in_sim_status),
+                    toggled = showIMSinSIMInfo,
+                    minSdk = VERSION_CODES.R,
+                ) {
+                    showIMSinSIMInfo =
+                        if (showIMSinSIMInfo) {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_SHOW_IMS_REGISTRATION_STATUS_BOOL,
+                                false,
+                            )
+                            false
+                        } else {
+                            moder.updateCarrierConfig(
+                                CarrierConfigManager.KEY_SHOW_IMS_REGISTRATION_STATUS_BOOL,
+                                true,
+                            )
+                            true
+                        }
+                }
             }
 
             if (VERSION.SDK_INT >= VERSION_CODES.TIRAMISU) {
+                val statusBarManager: StatusBarManager = context.getSystemService(StatusBarManager::class.java)
+
                 HeaderText(text = stringResource(R.string.qstile))
                 ClickablePropertyView(
                     label = stringResource(R.string.add_status_tile),

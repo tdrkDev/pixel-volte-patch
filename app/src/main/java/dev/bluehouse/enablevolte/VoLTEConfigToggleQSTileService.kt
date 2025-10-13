@@ -1,5 +1,6 @@
 package dev.bluehouse.enablevolte
 
+import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.telephony.CarrierConfigManager
@@ -66,14 +67,16 @@ open class VoLTEConfigToggleQSTileService(
                 false -> Tile.STATE_INACTIVE
                 null -> Tile.STATE_UNAVAILABLE
             }
-        qsTile.subtitle =
-            getString(
-                when (this.volteEnabled) {
-                    true -> R.string.enabled
-                    false -> R.string.disabled
-                    null -> R.string.unknown
-                },
-            )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            qsTile.subtitle =
+                getString(
+                    when (this.volteEnabled) {
+                        true -> R.string.enabled
+                        false -> R.string.disabled
+                        null -> R.string.unknown
+                    },
+                )
+        }
         qsTile.updateTile()
     }
 
@@ -83,7 +86,9 @@ open class VoLTEConfigToggleQSTileService(
         moder.updateCarrierConfig(CarrierConfigManager.KEY_CARRIER_VOLTE_AVAILABLE_BOOL, !volteEnabled)
         moder.restartIMSRegistration()
         qsTile.state = if (volteEnabled) Tile.STATE_INACTIVE else Tile.STATE_ACTIVE
-        qsTile.subtitle = getString(if (volteEnabled) R.string.disabled else R.string.enabled)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            qsTile.subtitle = getString(if (volteEnabled) R.string.disabled else R.string.enabled)
+        }
         qsTile.updateTile()
     }
 

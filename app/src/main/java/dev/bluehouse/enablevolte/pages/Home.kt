@@ -2,7 +2,6 @@ package dev.bluehouse.enablevolte.pages
 
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.telephony.SubscriptionInfo
 import android.util.Log
 import androidx.compose.foundation.layout.Column
@@ -19,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
-import androidx.core.content.ContextCompat.startActivity
 import androidx.core.net.toUri
 import androidx.navigation.NavController
 import dev.bluehouse.enablevolte.BuildConfig

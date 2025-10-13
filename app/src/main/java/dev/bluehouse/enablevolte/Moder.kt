@@ -427,7 +427,12 @@ class SubscriptionModer(
         get() = this.getBooleanValue(CarrierConfigManager.KEY_CARRIER_VT_AVAILABLE_BOOL)
 
     val ssOverUtEnabled: Boolean
-        get() = this.getBooleanValue(CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL)
+        get() =
+            if (Build.VERSION.SDK_INT >= VERSION_CODES.Q) {
+                this.getBooleanValue(CarrierConfigManager.KEY_CARRIER_SUPPORTS_SS_OVER_UT_BOOL)
+            } else {
+                false
+            }
 
     val ssOverCDMAEnabled: Boolean
         get() = this.getBooleanValue(CarrierConfigManager.KEY_SUPPORT_SS_OVER_CDMA_BOOL)
@@ -442,16 +447,24 @@ class SubscriptionModer(
 
     val is4GPlusEnabled: Boolean
         get() =
-            this.getBooleanValue(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL) &&
-                this.getBooleanValue(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL) &&
-                !this.getBooleanValue(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL)
+            if (Build.VERSION.SDK_INT >= VERSION_CODES.Q) {
+                this.getBooleanValue(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL) &&
+                    this.getBooleanValue(CarrierConfigManager.KEY_ENHANCED_4G_LTE_ON_BY_DEFAULT_BOOL) &&
+                    !this.getBooleanValue(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL)
+            } else {
+                this.getBooleanValue(CarrierConfigManager.KEY_EDITABLE_ENHANCED_4G_LTE_BOOL) &&
+                    !this.getBooleanValue(CarrierConfigManager.KEY_HIDE_ENHANCED_4G_LTE_BOOL)
+            }
 
     val isNRConfigEnabled: Boolean
-        @RequiresApi(Build.VERSION_CODES.S)
         get() =
-            this
-                .getIntArrayValue(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY)
-                .contentEquals(intArrayOf(1, 2))
+            if (Build.VERSION.SDK_INT >= VERSION_CODES.S) {
+                this
+                    .getIntArrayValue(CarrierConfigManager.KEY_CARRIER_NR_AVAILABILITIES_INT_ARRAY)
+                    .contentEquals(intArrayOf(1, 2))
+            } else {
+                false
+            }
 
     val userAgentConfig: String
         get() = this.getStringValue(KEY_IMS_USER_AGENT) ?: ""

@@ -340,7 +340,7 @@ fun Editor(subId: Int) {
             if (searchKeyword.isEmpty()) {
                 sections
             } else {
-                sections.map {
+                sections.map { it ->
                     Section(
                         name = it.name,
                         rows =
@@ -348,7 +348,7 @@ fun Editor(subId: Int) {
                                 .filter { row ->
                                     row.key.contains(searchKeyword) ||
                                         row.fieldName.contains(searchKeyword)
-                                }.map { it },
+                                }.map { ii -> ii },
                     )
                 }
             }
