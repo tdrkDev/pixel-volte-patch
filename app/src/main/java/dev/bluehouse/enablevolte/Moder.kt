@@ -138,9 +138,9 @@ class SubscriptionModer(
         val iCclInstance = this.loadCachedInterface { carrierConfigLoader }
         if (bundle != null) {
             val args = toPersistableBundle(bundle)
-            iCclInstance.overrideConfig(subscriptionId, args, true)
+            iCclInstance.overrideConfig(subscriptionId, args, false)
         } else {
-            iCclInstance.overrideConfig(subscriptionId, null, true)
+            iCclInstance.overrideConfig(subscriptionId, null, false)
         }
     }
 

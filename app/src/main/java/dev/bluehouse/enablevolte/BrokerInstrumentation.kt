@@ -26,7 +26,7 @@ class BrokerInstrumentation : Instrumentation() {
             val configurationManager = this.context.getSystemService(CarrierConfigManager::class.java)
             val overrideValues = toPersistableBundle(arguments)
 
-            configurationManager.overrideConfig(subId, overrideValues, true)
+            configurationManager.overrideConfig(subId, overrideValues, false)
         } finally {
             Log.i(TAG, "applyConfig done")
             am.stopDelegateShellPermissionIdentity()
@@ -41,7 +41,7 @@ class BrokerInstrumentation : Instrumentation() {
         try {
             val configurationManager = this.context.getSystemService(CarrierConfigManager::class.java)
 
-            configurationManager.overrideConfig(subId, null, true)
+            configurationManager.overrideConfig(subId, null, false)
         } finally {
             Log.i(TAG, "clearConfig done")
             am.stopDelegateShellPermissionIdentity()
